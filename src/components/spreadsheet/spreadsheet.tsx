@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Cell from './cell';
 import { Button } from '@/components/ui/button';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Bold } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +19,8 @@ import { DEFAULT_COLS, DEFAULT_ROWS, SPREADSHEET_LOCAL_STORAGE_KEY, DEFAULT_COL_
 
 export type CellData = {
   value: string;
+  bold?: boolean;
+  textColor?: string; // hex color code
 };
 
 type CellAddress = { row: number; col: number };
@@ -38,9 +40,71 @@ const getColumnName = (colIndex: number): string => {
 };
 
 
-const Toolbar = ({ onClearAll }: { onClearAll: () => void }) => {
+const COLOR_PALETTE = [
+  { name: 'Black', value: '#000000' },
+  { name: 'Red', value: '#EF4444' },
+  { name: 'Blue', value: '#3B82F6' },
+  { name: 'Green', value: '#10B981' },
+  { name: 'Orange', value: '#F97316' },
+  { name: 'Purple', value: '#A855F7' },
+];
+
+type ToolbarProps = {
+  onClearAll: () => void;
+  activeCell: CellAddress | null;
+  gridData: CellData[][];
+  onToggleBold: () => void;
+  onSetTextColor: (color: string) => void;
+};
+
+const Toolbar = ({ onClearAll, activeCell, gridData, onToggleBold, onSetTextColor }: ToolbarProps) => {
+  const activeCellData = activeCell 
+    ? gridData[activeCell.row]?.[activeCell.col]
+    : null;
+  const isBold = activeCellData?.bold || false;
+  const currentTextColor = activeCellData?.textColor;
+  const hasActiveCell = activeCell !== null;
+
   return (
     <div className="p-2 border-b flex items-center gap-2 bg-card rounded-t-lg">
+      <div className="flex items-center gap-2 border-r pr-2">
+        <Button
+          variant={isBold ? "default" : "outline"}
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleBold(e);
+          }}
+          disabled={!hasActiveCell}
+          title="Bold"
+        >
+          <Bold className="h-4 w-4" />
+        </Button>
+      </div>
+      <div className="flex items-center gap-1">
+        {COLOR_PALETTE.map((color) => (
+          <button
+            key={color.value}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSetTextColor(color.value, e);
+            }}
+            disabled={!hasActiveCell}
+            className={`
+              w-6 h-6 rounded border-2 transition-all
+              ${currentTextColor === color.value 
+                ? 'border-foreground scale-110' 
+                : 'border-border hover:border-foreground/50'
+              }
+              ${!hasActiveCell ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+            `}
+            style={{ backgroundColor: color.value }}
+            title={color.name}
+            aria-label={`Set text color to ${color.name}`}
+          />
+        ))}
+      </div>
+      <div className="flex-1" />
       <AlertDialog>
         <AlertDialogTrigger asChild>
           <Button variant="outline" size="sm">
@@ -72,6 +136,7 @@ export default function Spreadsheet() {
   const [rowHeights, setRowHeights] = useState<number[]>(() => Array(DEFAULT_ROWS).fill(DEFAULT_ROW_HEIGHT));
   const [activeCell, setActiveCell] = useState<CellAddress | null>(null);
   const tableRef = useRef<HTMLTableElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const resizingRef = useRef<{ type: 'col' | 'row', index: number, startPos: number, startSize: number } | null>(null);
   
   const ROWNUM = gridData.length;
@@ -89,8 +154,13 @@ export default function Spreadsheet() {
             const data = createEmptyGrid(rows, cols);
             for (let i = 0; i < parsed.gridData.length; i++) {
                 for (let j = 0; j < parsed.gridData[i].length; j++) {
-                    // Only load value, ignore styles from old data
-                    data[i][j] = { value: parsed.gridData[i][j]?.value || '' };
+                    const oldCell = parsed.gridData[i][j];
+                    // Load value and formatting properties, with backward compatibility
+                    data[i][j] = {
+                        value: oldCell?.value || '',
+                        ...(oldCell?.bold !== undefined && { bold: oldCell.bold }),
+                        ...(oldCell?.textColor && { textColor: oldCell.textColor }),
+                    };
                 }
             }
             setGridData(data);
@@ -205,7 +275,9 @@ export default function Spreadsheet() {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (tableRef.current && !tableRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      // Don't clear active cell if clicking inside the container (toolbar or table)
+      if (containerRef.current && !containerRef.current.contains(target)) {
         setActiveCell(null);
       }
     };
@@ -276,11 +348,49 @@ export default function Spreadsheet() {
     setRowHeights(Array(DEFAULT_ROWS).fill(DEFAULT_ROW_HEIGHT));
     setActiveCell(null);
   };
+
+  const handleToggleBold = useCallback((e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!activeCell) return;
+    const { row, col } = activeCell;
+    setGridData(currentGrid => {
+      const newGrid = currentGrid.map(r => r.map(c => ({...c}))); // Deep copy
+      if (newGrid[row] && newGrid[row][col]) {
+        newGrid[row][col] = {
+          ...newGrid[row][col],
+          bold: !newGrid[row][col].bold
+        };
+      }
+      return newGrid;
+    });
+  }, [activeCell]);
+
+  const handleSetTextColor = useCallback((color: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!activeCell) return;
+    const { row, col } = activeCell;
+    setGridData(currentGrid => {
+      const newGrid = currentGrid.map(r => r.map(c => ({...c}))); // Deep copy
+      if (newGrid[row] && newGrid[row][col]) {
+        newGrid[row][col] = {
+          ...newGrid[row][col],
+          textColor: color
+        };
+      }
+      return newGrid;
+    });
+  }, [activeCell]);
   
   return (
     <div className="flex-grow flex flex-col p-4 gap-4">
-      <div className="overflow-auto border rounded-lg shadow-lg bg-card flex-grow flex flex-col">
-        <Toolbar onClearAll={handleClearAll} />
+      <div ref={containerRef} className="overflow-auto border rounded-lg shadow-lg bg-card flex-grow flex flex-col">
+        <Toolbar 
+          onClearAll={handleClearAll}
+          activeCell={activeCell}
+          gridData={gridData}
+          onToggleBold={handleToggleBold}
+          onSetTextColor={handleSetTextColor}
+        />
         <div className="overflow-auto flex-grow">
             <table ref={tableRef} className="table-fixed border-collapse w-full">
             <thead className="sticky top-0 z-10 bg-card/80 backdrop-blur-sm">

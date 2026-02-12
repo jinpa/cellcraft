@@ -27,7 +27,7 @@ export default function Cell({ row, col, data, isActive, onSelect, onChange }: C
     onChange(e.target.value);
   };
 
-  const { value } = data || { value: '' };
+  const { value, bold, textColor } = data || { value: '' };
 
   const cellClassName = cn(
     'border-b border-r p-0 relative transition-all duration-150',
@@ -36,6 +36,11 @@ export default function Cell({ row, col, data, isActive, onSelect, onChange }: C
       'hover:bg-accent/10 cursor-cell': !isActive,
     }
   );
+
+  const textStyle: React.CSSProperties = {
+    fontWeight: bold ? 'bold' : 'normal',
+    color: textColor || undefined,
+  };
 
   return (
     <td
@@ -50,10 +55,11 @@ export default function Cell({ row, col, data, isActive, onSelect, onChange }: C
           type="text"
           value={value}
           onChange={handleInputChange}
-          className="w-full h-full p-2 outline-none bg-transparent text-foreground text-sm"
+          className="w-full h-full p-2 outline-none bg-transparent text-sm"
+          style={textStyle}
         />
       ) : (
-        <div className="w-full h-full p-2 text-sm truncate">
+        <div className="w-full h-full p-2 text-sm truncate" style={textStyle}>
           {value || <>&nbsp;</>}
         </div>
       )}
