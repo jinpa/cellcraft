@@ -1,17 +1,19 @@
 "use client";
 
 import { useRef, useEffect } from 'react';
+import { CellData } from './spreadsheet';
+import { cn } from '@/lib/utils';
 
 type CellProps = {
   row: number;
   col: number;
-  value: string;
+  data: CellData;
   isActive: boolean;
   onSelect: () => void;
   onChange: (value: string) => void;
 };
 
-export default function Cell({ row, col, value, isActive, onSelect, onChange }: CellProps) {
+export default function Cell({ row, col, data, isActive, onSelect, onChange }: CellProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -24,12 +26,27 @@ export default function Cell({ row, col, value, isActive, onSelect, onChange }: 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange(e.target.value);
   };
-  
+
+  const { value, style } = data || { value: '' };
+
+  const cellStyle = {
+    backgroundColor: style?.backgroundColor,
+  };
+
+  const cellClassName = cn(
+    'border-b border-r p-0 relative transition-all duration-150',
+    {
+      'ring-2 ring-accent ring-inset z-10': isActive,
+      'hover:bg-accent/10 cursor-cell': !isActive,
+      'font-bold': style?.bold,
+    }
+  );
+
   return (
     <td
       id={`cell-${row}-${col}`}
-      className={`border-b border-r p-0 relative transition-all duration-150
-        ${isActive ? 'ring-2 ring-accent ring-inset z-10' : 'hover:bg-accent/10 cursor-cell'}`}
+      className={cellClassName}
+      style={cellStyle}
       onClick={onSelect}
       tabIndex={-1}
     >

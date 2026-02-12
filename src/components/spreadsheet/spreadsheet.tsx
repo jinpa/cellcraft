@@ -2,12 +2,23 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Cell from './cell';
-import { DEFAULT_COLS, DEFAULT_ROWS, SPREADSHEET_LOCAL_STORAGE_KEY } from '@/lib/constants';
+import Toolbar from './toolbar';
+import { DEFAULT_COLS, DEFAULT_ROWS, SPREADSHEET_LOCAL_STORAGE_KEY, DEFAULT_COL_WIDTH, DEFAULT_ROW_HEIGHT } from '@/lib/constants';
+
+export type CellStyle = {
+  bold?: boolean;
+  backgroundColor?: string;
+};
+
+export type CellData = {
+  value: string;
+  style?: CellStyle;
+};
 
 type CellAddress = { row: number; col: number };
 
-const createEmptyGrid = (rows: number, cols: number): string[][] => {
-  return Array(rows).fill(null).map(() => Array(cols).fill(''));
+const createEmptyGrid = (rows: number, cols: number): CellData[][] => {
+  return Array(rows).fill(null).map(() => Array(cols).fill(null).map(() => ({ value: '' })));
 };
 
 const getColumnName = (colIndex: number): string => {
@@ -21,28 +32,48 @@ const getColumnName = (colIndex: number): string => {
 };
 
 export default function Spreadsheet() {
-  const [gridData, setGridData] = useState<string[][]>(() => createEmptyGrid(DEFAULT_ROWS, DEFAULT_COLS));
+  const [gridData, setGridData] = useState<CellData[][]>(() => createEmptyGrid(DEFAULT_ROWS, DEFAULT_COLS));
+  const [columnWidths, setColumnWidths] = useState<number[]>(() => Array(DEFAULT_COLS).fill(DEFAULT_COL_WIDTH));
+  const [rowHeights, setRowHeights] = useState<number[]>(() => Array(DEFAULT_ROWS).fill(DEFAULT_ROW_HEIGHT));
   const [activeCell, setActiveCell] = useState<CellAddress | null>(null);
   const tableRef = useRef<HTMLTableElement>(null);
+  const resizingRef = useRef<{ type: 'col' | 'row', index: number, startPos: number, startSize: number } | null>(null);
+  
   const ROWNUM = gridData.length;
   const COLNUM = gridData[0]?.length || 0;
-
 
   useEffect(() => {
     try {
       const savedData = localStorage.getItem(SPREADSHEET_LOCAL_STORAGE_KEY);
       if (savedData) {
-        const parsedData = JSON.parse(savedData);
-        if (Array.isArray(parsedData) && parsedData.length > 0 && Array.isArray(parsedData[0])) {
-            const rows = Math.max(DEFAULT_ROWS, parsedData.length);
-            const cols = Math.max(DEFAULT_COLS, parsedData[0].length);
+        const parsed = JSON.parse(savedData);
+        if (parsed.gridData) {
+            const rows = Math.max(DEFAULT_ROWS, parsed.gridData.length);
+            const cols = Math.max(DEFAULT_COLS, parsed.gridData[0]?.length || 0);
+
             const data = createEmptyGrid(rows, cols);
-            for (let i = 0; i < parsedData.length; i++) {
-                for (let j = 0; j < parsedData[i].length; j++) {
-                    data[i][j] = parsedData[i][j];
+            for (let i = 0; i < parsed.gridData.length; i++) {
+                for (let j = 0; j < parsed.gridData[i].length; j++) {
+                    data[i][j] = parsed.gridData[i][j] || { value: '' };
                 }
             }
             setGridData(data);
+            
+            const cWidths = Array(cols).fill(DEFAULT_COL_WIDTH);
+            if(parsed.columnWidths) {
+              for (let i = 0; i < parsed.columnWidths.length; i++) {
+                cWidths[i] = parsed.columnWidths[i];
+              }
+            }
+            setColumnWidths(cWidths);
+
+            const rHeights = Array(rows).fill(DEFAULT_ROW_HEIGHT);
+            if(parsed.rowHeights) {
+                for (let i = 0; i < parsed.rowHeights.length; i++) {
+                    rHeights[i] = parsed.rowHeights[i];
+                }
+            }
+            setRowHeights(rHeights);
         }
       }
     } catch (error) {
@@ -52,20 +83,48 @@ export default function Spreadsheet() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(SPREADSHEET_LOCAL_STORAGE_KEY, JSON.stringify(gridData));
+      const dataToSave = {
+        gridData,
+        columnWidths,
+        rowHeights
+      };
+      localStorage.setItem(SPREADSHEET_LOCAL_STORAGE_KEY, JSON.stringify(dataToSave));
     } catch (error) {
       console.error("Failed to save data to localStorage", error);
     }
-  }, [gridData]);
+  }, [gridData, columnWidths, rowHeights]);
 
   const handleCellChange = useCallback((row: number, col: number, value: string) => {
     setGridData(prevData => {
       const newData = prevData.map(r => [...r]);
       if (!newData[row]) newData[row] = [];
-      newData[row][col] = value;
+      const oldCellData = newData[row][col] || { value: '' };
+      newData[row][col] = { ...oldCellData, value };
       return newData;
     });
   }, []);
+  
+  const handleStyleChange = useCallback((row: number, col: number, style: Partial<CellStyle>) => {
+    setGridData(prevData => {
+      const newData = prevData.map(r => [...r]);
+      const oldCellData = newData[row][col] || { value: '' };
+      newData[row][col] = { ...oldCellData, style: { ...oldCellData.style, ...style } };
+      return newData;
+    });
+  }, []);
+
+  const handleToggleBold = useCallback(() => {
+    if (!activeCell) return;
+    const { row, col } = activeCell;
+    const currentBold = gridData[row][col]?.style?.bold || false;
+    handleStyleChange(row, col, { bold: !currentBold });
+  }, [activeCell, gridData, handleStyleChange]);
+
+  const handleSetBackgroundColor = useCallback((color: string) => {
+    if (!activeCell) return;
+    const { row, col } = activeCell;
+    handleStyleChange(row, col, { backgroundColor: color });
+  }, [activeCell, handleStyleChange]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (!activeCell) return;
@@ -139,33 +198,99 @@ export default function Spreadsheet() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const handleColResizeStart = (e: React.MouseEvent, colIndex: number) => {
+    e.preventDefault();
+    resizingRef.current = {
+      type: 'col',
+      index: colIndex,
+      startPos: e.clientX,
+      startSize: columnWidths[colIndex],
+    };
+  };
+
+  const handleRowResizeStart = (e: React.MouseEvent, rowIndex: number) => {
+    e.preventDefault();
+    resizingRef.current = {
+      type: 'row',
+      index: rowIndex,
+      startPos: e.clientY,
+      startSize: rowHeights[rowIndex],
+    };
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!resizingRef.current) return;
+      const { type, index, startPos, startSize } = resizingRef.current;
+      if (type === 'col') {
+        const newWidth = startSize + (e.clientX - startPos);
+        if (newWidth > 30) {
+          setColumnWidths(prev => {
+            const newWidths = [...prev];
+            newWidths[index] = newWidth;
+            return newWidths;
+          });
+        }
+      } else {
+        const newHeight = startSize + (e.clientY - startPos);
+        if (newHeight > 20) {
+          setRowHeights(prev => {
+            const newHeights = [...prev];
+            newHeights[index] = newHeight;
+            return newHeights;
+          });
+        }
+      }
+    };
+
+    const handleMouseUp = () => {
+      resizingRef.current = null;
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
   
+  const activeCellStyle = activeCell ? gridData[activeCell.row]?.[activeCell.col]?.style : undefined;
+
   return (
-    <div className="flex-grow flex flex-col p-4">
+    <div className="flex-grow flex flex-col p-4 gap-4">
+      <Toolbar 
+        activeCellStyle={activeCellStyle}
+        onToggleBold={handleToggleBold}
+        onSetBackgroundColor={handleSetBackgroundColor}
+      />
       <div className="overflow-auto border rounded-lg shadow-lg bg-card flex-grow">
         <table ref={tableRef} className="table-fixed border-collapse w-full">
           <thead className="sticky top-0 z-10 bg-card/80 backdrop-blur-sm">
             <tr>
               <th className="w-16 border-r border-b p-2 text-sm font-medium text-muted-foreground sticky left-0 z-20 bg-inherit"></th>
               {Array.from({ length: COLNUM }).map((_, colIndex) => (
-                <th key={colIndex} className="w-32 border-r border-b p-2 text-sm font-medium text-muted-foreground">
+                <th key={colIndex} style={{width: `${columnWidths[colIndex]}px`}} className="border-r border-b p-2 text-sm font-medium text-muted-foreground relative">
                   {getColumnName(colIndex)}
+                  <div onMouseDown={e => handleColResizeStart(e, colIndex)} className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-accent"/>
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
             {gridData.map((row, rowIndex) => (
-              <tr key={rowIndex}>
-                <td className="w-16 sticky left-0 bg-card/80 backdrop-blur-sm border-r border-b p-2 text-center text-sm font-medium text-muted-foreground z-10">
+              <tr key={rowIndex} style={{height: `${rowHeights[rowIndex]}px`}}>
+                <td className="w-16 sticky left-0 bg-card/80 backdrop-blur-sm border-r border-b p-2 text-center text-sm font-medium text-muted-foreground z-10 relative">
                   {rowIndex + 1}
+                  <div onMouseDown={e => handleRowResizeStart(e, rowIndex)} className="absolute bottom-0 left-0 w-full h-1.5 cursor-row-resize hover:bg-accent"/>
                 </td>
-                {row.map((cellValue, colIndex) => (
+                {row.map((cellData, colIndex) => (
                   <Cell
                     key={`${rowIndex}-${colIndex}`}
                     row={rowIndex}
                     col={colIndex}
-                    value={cellValue}
+                    data={cellData}
                     isActive={activeCell?.row === rowIndex && activeCell?.col === colIndex}
                     onSelect={() => handleSelectCell(rowIndex, colIndex)}
                     onChange={(value) => handleCellChange(rowIndex, colIndex, value)}
