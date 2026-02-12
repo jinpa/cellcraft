@@ -5,14 +5,8 @@ import Cell from './cell';
 import Toolbar from './toolbar';
 import { DEFAULT_COLS, DEFAULT_ROWS, SPREADSHEET_LOCAL_STORAGE_KEY, DEFAULT_COL_WIDTH, DEFAULT_ROW_HEIGHT } from '@/lib/constants';
 
-export type CellStyle = {
-  bold?: boolean;
-  backgroundColor?: string;
-};
-
 export type CellData = {
   value: string;
-  style?: CellStyle;
 };
 
 type CellAddress = { row: number; col: number };
@@ -54,7 +48,8 @@ export default function Spreadsheet() {
             const data = createEmptyGrid(rows, cols);
             for (let i = 0; i < parsed.gridData.length; i++) {
                 for (let j = 0; j < parsed.gridData[i].length; j++) {
-                    data[i][j] = parsed.gridData[i][j] || { value: '' };
+                    // Only load value, ignore styles from old data
+                    data[i][j] = { value: parsed.gridData[i][j]?.value || '' };
                 }
             }
             setGridData(data);
@@ -95,69 +90,20 @@ export default function Spreadsheet() {
   }, [gridData, columnWidths, rowHeights]);
 
   const handleCellChange = useCallback((row: number, col: number, value: string) => {
-    setGridData(prevData => {
-      const newData = [...prevData];
-      const newRow = [...(newData[row] || [])];
-      const oldCellData = newRow[col] || { value: '' };
-      newRow[col] = { ...oldCellData, value };
-      newData[row] = newRow;
-      return newData;
-    });
+    setGridData(currentGrid =>
+      currentGrid.map((currentRow, rowIndex) => {
+        if (rowIndex === row) {
+          return currentRow.map((currentCell, colIndex) => {
+            if (colIndex === col) {
+              return { value };
+            }
+            return currentCell;
+          });
+        }
+        return currentRow;
+      })
+    );
   }, []);
-  
-  const handleToggleBold = useCallback(() => {
-    if (!activeCell) return;
-    const { row, col } = activeCell;
-    setGridData(prevData => {
-      const newData = [...prevData];
-      const newRow = [...newData[row]];
-      const cell = newRow[col] || { value: '' };
-      
-      const newStyle = {
-        ...(cell.style || {}),
-        bold: !cell.style?.bold,
-      };
-
-      const newCell = { ...cell, style: newStyle };
-
-      if (Object.values(newCell.style).every(v => !v)) {
-        delete newCell.style;
-      }
-      
-      newRow[col] = newCell;
-      newData[row] = newRow;
-      return newData;
-    });
-  }, [activeCell]);
-
-  const handleSetBackgroundColor = useCallback((color: string) => {
-    if (!activeCell) return;
-    const { row, col } = activeCell;
-    setGridData(prevData => {
-      const newData = [...prevData];
-      const newRow = [...newData[row]];
-      const cell = newRow[col] || { value: '' };
-
-      const newBgColor = (color === '' || cell.style?.backgroundColor === color)
-        ? undefined 
-        : color;
-
-      const newStyle = {
-        ...(cell.style || {}),
-        backgroundColor: newBgColor,
-      };
-
-      const newCell = { ...cell, style: newStyle };
-
-      if (Object.values(newCell.style).every(v => !v)) {
-        delete newCell.style;
-      }
-
-      newRow[col] = newCell;
-      newData[row] = newRow;
-      return newData;
-    });
-  }, [activeCell]);
   
   const handleClearAll = useCallback(() => {
     setGridData(createEmptyGrid(DEFAULT_ROWS, DEFAULT_COLS));
@@ -296,14 +242,9 @@ export default function Spreadsheet() {
     };
   }, []);
   
-  const activeCellStyle = activeCell ? gridData[activeCell.row]?.[activeCell.col]?.style : undefined;
-
   return (
     <div className="flex-grow flex flex-col p-4 gap-4">
       <Toolbar 
-        activeCellStyle={activeCellStyle}
-        onToggleBold={handleToggleBold}
-        onSetBackgroundColor={handleSetBackgroundColor}
         onClearAll={handleClearAll}
       />
       <div className="overflow-auto border rounded-lg shadow-lg bg-card flex-grow">

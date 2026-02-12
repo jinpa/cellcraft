@@ -27,18 +27,13 @@ export default function Cell({ row, col, data, isActive, onSelect, onChange }: C
     onChange(e.target.value);
   };
 
-  const { value, style } = data || { value: '' };
-
-  const cellStyle = {
-    backgroundColor: style?.backgroundColor,
-  };
+  const { value } = data || { value: '' };
 
   const cellClassName = cn(
     'border-b border-r p-0 relative transition-all duration-150',
     {
       'ring-2 ring-accent ring-inset z-10': isActive,
       'hover:bg-accent/10 cursor-cell': !isActive,
-      'font-bold': style?.bold,
     }
   );
 
@@ -46,7 +41,6 @@ export default function Cell({ row, col, data, isActive, onSelect, onChange }: C
     <td
       id={`cell-${row}-${col}`}
       className={cellClassName}
-      style={cellStyle}
       onClick={onSelect}
       tabIndex={-1}
     >
