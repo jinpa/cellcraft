@@ -104,7 +104,6 @@ const Toolbar = ({ onClearAll, activeCell, gridData, onToggleBold, onSetTextColo
           />
         ))}
       </div>
-      <div className="flex-1" />
       <AlertDialog>
         <AlertDialogTrigger asChild>
           <Button variant="outline" size="sm">
@@ -343,10 +342,18 @@ export default function Spreadsheet() {
   }, []);
   
   const handleClearAll = () => {
+    // Reset in-memory state
     setGridData(createEmptyGrid(DEFAULT_ROWS, DEFAULT_COLS));
     setColumnWidths(Array(DEFAULT_COLS).fill(DEFAULT_COL_WIDTH));
     setRowHeights(Array(DEFAULT_ROWS).fill(DEFAULT_ROW_HEIGHT));
     setActiveCell(null);
+
+    // Also clear any persisted data so a reload doesn't bring old content back
+    try {
+      localStorage.removeItem(SPREADSHEET_LOCAL_STORAGE_KEY);
+    } catch (error) {
+      console.error("Failed to clear spreadsheet data from localStorage", error);
+    }
   };
 
   const handleToggleBold = useCallback((e?: React.MouseEvent) => {
