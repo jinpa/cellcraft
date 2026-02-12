@@ -1,0 +1,12 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect x="4" y="4" width="56" height="56" rx="12" fill="#0EA66C"/>
+
+  <!-- Grid -->
+  <rect x="13" y="15" width="38" height="34" rx="4" fill="#ECFDF5"/>
+  <path d="M26 15V49 M38 15V49" stroke="#D1FAE5" stroke-width="2"/>
+  <path d="M22 25H42 M22 35H42" stroke="#D1FAE5" stroke-width="2"/>
+
+  <!-- Highlighted cell -->
+  <rect x="26" y="25" width="12" height="10" fill="#A7F3D0" stroke="#059669" stroke-width="1.5" rx="1.5" />
+</svg>

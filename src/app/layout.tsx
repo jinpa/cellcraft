@@ -19,6 +19,9 @@ import { Button } from '@/components/ui/button';
 export const metadata: Metadata = {
   title: 'CellCraft',
   description: 'A lightweight browser-based spreadsheet app.',
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({
