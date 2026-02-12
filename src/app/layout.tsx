@@ -12,7 +12,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
-import { Home, Milestone } from 'lucide-react';
+import { Home } from 'lucide-react';
 import { Toaster } from "@/components/ui/toaster";
 import { Button } from '@/components/ui/button';
 
@@ -60,14 +60,6 @@ export default function RootLayout({
                     <Link href="/">
                       <Home />
                       <span>Home</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Checkpoints">
-                    <Link href="#">
-                      <Milestone />
-                      <span>Checkpoints</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
