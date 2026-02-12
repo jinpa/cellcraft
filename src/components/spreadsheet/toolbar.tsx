@@ -23,7 +23,7 @@ const COLORS = [
 
 export default function Toolbar({ activeCellStyle, onToggleBold, onSetBackgroundColor }: ToolbarProps) {
   return (
-    <div className="p-2 border-b flex items-center gap-2 bg-card">
+    <div className="p-2 border-b flex items-center gap-2 bg-card rounded-lg">
       <Button
         variant={activeCellStyle?.bold ? 'secondary' : 'ghost'}
         size="icon"

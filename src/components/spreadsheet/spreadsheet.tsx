@@ -104,27 +104,35 @@ export default function Spreadsheet() {
     });
   }, []);
   
-  const handleStyleChange = useCallback((row: number, col: number, style: Partial<CellStyle>) => {
-    setGridData(prevData => {
-      const newData = prevData.map(r => [...r]);
-      const oldCellData = newData[row][col] || { value: '' };
-      newData[row][col] = { ...oldCellData, style: { ...oldCellData.style, ...style } };
-      return newData;
-    });
-  }, []);
-
   const handleToggleBold = useCallback(() => {
     if (!activeCell) return;
     const { row, col } = activeCell;
-    const currentBold = gridData[row][col]?.style?.bold || false;
-    handleStyleChange(row, col, { bold: !currentBold });
-  }, [activeCell, gridData, handleStyleChange]);
+    setGridData(prevData => {
+      const newData = prevData.map(r => r.map(c => ({ ...c })));
+      const cell = newData[row][col] || { value: '' };
+      const currentBold = cell.style?.bold || false;
+      newData[row][col] = {
+        ...cell,
+        style: { ...cell.style, bold: !currentBold },
+      };
+      return newData;
+    });
+  }, [activeCell]);
 
   const handleSetBackgroundColor = useCallback((color: string) => {
     if (!activeCell) return;
     const { row, col } = activeCell;
-    handleStyleChange(row, col, { backgroundColor: color });
-  }, [activeCell, handleStyleChange]);
+    setGridData(prevData => {
+      const newData = prevData.map(r => r.map(c => ({ ...c })));
+      const cell = newData[row][col] || { value: '' };
+      const newColor = cell.style?.backgroundColor === color ? undefined : color;
+      newData[row][col] = {
+        ...cell,
+        style: { ...cell.style, backgroundColor: newColor },
+      };
+      return newData;
+    });
+  }, [activeCell]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (!activeCell) return;
