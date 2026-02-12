@@ -1,14 +1,26 @@
 "use client";
 
-import { Bold, Palette } from 'lucide-react';
+import { Bold, Palette, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { CellStyle } from './spreadsheet';
 
 type ToolbarProps = {
   activeCellStyle?: CellStyle;
   onToggleBold: () => void;
   onSetBackgroundColor: (color: string) => void;
+  onClearAll: () => void;
 };
 
 const COLORS = [
@@ -21,7 +33,7 @@ const COLORS = [
   '#F472B6', // pink-400
 ];
 
-export default function Toolbar({ activeCellStyle, onToggleBold, onSetBackgroundColor }: ToolbarProps) {
+export default function Toolbar({ activeCellStyle, onToggleBold, onSetBackgroundColor, onClearAll }: ToolbarProps) {
   return (
     <div className="p-2 border-b flex items-center gap-2 bg-card rounded-lg">
       <Button
@@ -51,6 +63,27 @@ export default function Toolbar({ activeCellStyle, onToggleBold, onSetBackground
           </div>
         </PopoverContent>
       </Popover>
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive">
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action will clear all data and formatting from the spreadsheet and cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={onClearAll} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Clear All
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
