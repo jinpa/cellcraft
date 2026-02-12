@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Cell from './cell';
-import Toolbar from './toolbar';
 import { DEFAULT_COLS, DEFAULT_ROWS, SPREADSHEET_LOCAL_STORAGE_KEY, DEFAULT_COL_WIDTH, DEFAULT_ROW_HEIGHT } from '@/lib/constants';
 
 export type CellData = {
@@ -105,13 +104,6 @@ export default function Spreadsheet() {
     );
   }, []);
   
-  const handleClearAll = useCallback(() => {
-    setGridData(createEmptyGrid(DEFAULT_ROWS, DEFAULT_COLS));
-    setColumnWidths(Array(DEFAULT_COLS).fill(DEFAULT_COL_WIDTH));
-    setRowHeights(Array(DEFAULT_ROWS).fill(DEFAULT_ROW_HEIGHT));
-    setActiveCell(null);
-  }, []);
-
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (!activeCell) return;
 
@@ -244,9 +236,6 @@ export default function Spreadsheet() {
   
   return (
     <div className="flex-grow flex flex-col p-4 gap-4">
-      <Toolbar 
-        onClearAll={handleClearAll}
-      />
       <div className="overflow-auto border rounded-lg shadow-lg bg-card flex-grow">
         <table ref={tableRef} className="table-fixed border-collapse w-full">
           <thead className="sticky top-0 z-10 bg-card/80 backdrop-blur-sm">
