@@ -107,30 +107,52 @@ export default function Spreadsheet() {
   const handleToggleBold = useCallback(() => {
     if (!activeCell) return;
     const { row, col } = activeCell;
-    setGridData(prevData => {
-      const newData = prevData.map(r => r.map(c => ({ ...c })));
-      const cell = newData[row][col] || { value: '' };
-      const currentBold = cell.style?.bold || false;
-      newData[row][col] = {
+    setGridData(gridData => {
+      const newGridData = gridData.map(row => [...row]);
+      const cell = newGridData[row]?.[col] || { value: '' };
+      
+      const newCell = {
         ...cell,
-        style: { ...cell.style, bold: !currentBold },
+        style: {
+          ...(cell.style || {}),
+          bold: !cell.style?.bold,
+        },
       };
-      return newData;
+
+      if (Object.values(newCell.style).every(v => v === undefined || v === false)) {
+          delete newCell.style;
+      }
+      
+      newGridData[row][col] = newCell;
+      return newGridData;
     });
   }, [activeCell]);
 
   const handleSetBackgroundColor = useCallback((color: string) => {
     if (!activeCell) return;
     const { row, col } = activeCell;
-    setGridData(prevData => {
-      const newData = prevData.map(r => r.map(c => ({ ...c })));
-      const cell = newData[row][col] || { value: '' };
-      const newColor = cell.style?.backgroundColor === color ? undefined : color;
-      newData[row][col] = {
+    setGridData(gridData => {
+      const newGridData = gridData.map(row => [...row]);
+      const cell = newGridData[row]?.[col] || { value: '' };
+
+      const newBgColor = (color === '' || cell.style?.backgroundColor === color)
+        ? undefined 
+        : color;
+
+      const newCell = {
         ...cell,
-        style: { ...cell.style, backgroundColor: newColor },
+        style: {
+          ...(cell.style || {}),
+          backgroundColor: newBgColor,
+        },
       };
-      return newData;
+
+      if (Object.values(newCell.style).every(v => v === undefined || v === false)) {
+          delete newCell.style;
+      }
+
+      newGridData[row][col] = newCell;
+      return newGridData;
     });
   }, [activeCell]);
 
