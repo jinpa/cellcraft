@@ -96,10 +96,11 @@ export default function Spreadsheet() {
 
   const handleCellChange = useCallback((row: number, col: number, value: string) => {
     setGridData(prevData => {
-      const newData = prevData.map(r => [...r]);
-      if (!newData[row]) newData[row] = [];
-      const oldCellData = newData[row][col] || { value: '' };
-      newData[row][col] = { ...oldCellData, value };
+      const newData = [...prevData];
+      const newRow = [...(newData[row] || [])];
+      const oldCellData = newRow[col] || { value: '' };
+      newRow[col] = { ...oldCellData, value };
+      newData[row] = newRow;
       return newData;
     });
   }, []);
@@ -107,52 +108,54 @@ export default function Spreadsheet() {
   const handleToggleBold = useCallback(() => {
     if (!activeCell) return;
     const { row, col } = activeCell;
-    setGridData(gridData => {
-      const newGridData = gridData.map(row => [...row]);
-      const cell = newGridData[row]?.[col] || { value: '' };
+    setGridData(prevData => {
+      const newData = [...prevData];
+      const newRow = [...newData[row]];
+      const cell = newRow[col] || { value: '' };
       
-      const newCell = {
-        ...cell,
-        style: {
-          ...(cell.style || {}),
-          bold: !cell.style?.bold,
-        },
+      const newStyle = {
+        ...(cell.style || {}),
+        bold: !cell.style?.bold,
       };
 
-      if (Object.values(newCell.style).every(v => v === undefined || v === false)) {
-          delete newCell.style;
+      const newCell = { ...cell, style: newStyle };
+
+      if (Object.values(newCell.style).every(v => !v)) {
+        delete newCell.style;
       }
       
-      newGridData[row][col] = newCell;
-      return newGridData;
+      newRow[col] = newCell;
+      newData[row] = newRow;
+      return newData;
     });
   }, [activeCell]);
 
   const handleSetBackgroundColor = useCallback((color: string) => {
     if (!activeCell) return;
     const { row, col } = activeCell;
-    setGridData(gridData => {
-      const newGridData = gridData.map(row => [...row]);
-      const cell = newGridData[row]?.[col] || { value: '' };
+    setGridData(prevData => {
+      const newData = [...prevData];
+      const newRow = [...newData[row]];
+      const cell = newRow[col] || { value: '' };
 
       const newBgColor = (color === '' || cell.style?.backgroundColor === color)
         ? undefined 
         : color;
 
-      const newCell = {
-        ...cell,
-        style: {
-          ...(cell.style || {}),
-          backgroundColor: newBgColor,
-        },
+      const newStyle = {
+        ...(cell.style || {}),
+        backgroundColor: newBgColor,
       };
 
-      if (Object.values(newCell.style).every(v => v === undefined || v === false)) {
-          delete newCell.style;
+      const newCell = { ...cell, style: newStyle };
+
+      if (Object.values(newCell.style).every(v => !v)) {
+        delete newCell.style;
       }
 
-      newGridData[row][col] = newCell;
-      return newGridData;
+      newRow[col] = newCell;
+      newData[row] = newRow;
+      return newData;
     });
   }, [activeCell]);
 
