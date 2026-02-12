@@ -141,11 +141,7 @@ export default function Spreadsheet() {
   }, []);
   
   return (
-    <div className="w-full h-screen p-4 flex flex-col bg-background">
-      <header className="mb-4 text-center">
-        <h1 className="text-4xl font-bold text-primary font-headline">CellCraft</h1>
-        <p className="text-muted-foreground">A lightweight browser-based spreadsheet</p>
-      </header>
+    <div className="flex-grow flex flex-col p-4">
       <div className="overflow-auto border rounded-lg shadow-lg bg-card flex-grow">
         <table ref={tableRef} className="table-fixed border-collapse w-full">
           <thead className="sticky top-0 z-10 bg-card/80 backdrop-blur-sm">
